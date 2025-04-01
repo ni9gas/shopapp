@@ -40,6 +40,7 @@ export function AdminPanel({ products, onUpdateProduct, onDeleteProduct, onAddPr
     if (editingProduct) {
       onUpdateProduct(editingProduct)
       setEditingProduct(null)
+      showAlert("Product updated successfully")
     }
   }
 
@@ -48,9 +49,10 @@ export function AdminPanel({ products, onUpdateProduct, onDeleteProduct, onAddPr
   }
 
   const handleDeleteProduct = (productId: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
+    showConfirm("Are you sure you want to delete this product?", () => {
       onDeleteProduct(productId)
-    }
+      showAlert("Product deleted successfully")
+    })
   }
 
   const handleAddNewProduct = () => {
@@ -70,8 +72,9 @@ export function AdminPanel({ products, onUpdateProduct, onDeleteProduct, onAddPr
     if (newProduct.name && newProduct.description) {
       onAddProduct(newProduct)
       setIsAddingProduct(false)
+      showAlert("Product added successfully")
     } else {
-      alert("Please fill in all required fields")
+      showAlert("Please fill in all required fields")
     }
   }
 
@@ -92,6 +95,40 @@ export function AdminPanel({ products, onUpdateProduct, onDeleteProduct, onAddPr
         ...prev!,
         [field]: field === "price" ? Number(value) : value,
       }))
+    }
+  }
+
+  // Use Telegram's native alert if available
+  const showAlert = (message: string) => {
+    if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+      window.Telegram.WebApp.showAlert(message)
+    } else {
+      alert(message)
+    }
+  }
+
+  // Use Telegram's native popup for confirmations
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+      window.Telegram.WebApp.showPopup(
+        {
+          title: "Confirm",
+          message: message,
+          buttons: [
+            { type: "cancel", text: "Cancel" },
+            { type: "ok", text: "Delete" },
+          ],
+        },
+        (buttonId) => {
+          if (buttonId === "ok") {
+            onConfirm()
+          }
+        },
+      )
+    } else {
+      if (confirm(message)) {
+        onConfirm()
+      }
     }
   }
 
