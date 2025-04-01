@@ -53,7 +53,23 @@ function StoreContent() {
       }
     }
 
-    // Load products
+    // Load products from localStorage first if available
+    const savedProducts = localStorage.getItem("store_products")
+    if (savedProducts) {
+      try {
+        const parsedProducts = JSON.parse(savedProducts)
+        setProducts(parsedProducts)
+      } catch (error) {
+        console.error("Error parsing saved products:", error)
+        loadDefaultProducts()
+      }
+    } else {
+      loadDefaultProducts()
+    }
+  }, [])
+
+  // Load default products from the service
+  const loadDefaultProducts = () => {
     const allProducts = {
       software: getProducts("software"),
       templates: getProducts("templates"),
@@ -61,10 +77,16 @@ function StoreContent() {
       courses: getProducts("courses"),
     }
     setProducts(allProducts)
-  }, [])
+    // Save default products to localStorage
+    localStorage.setItem("store_products", JSON.stringify(allProducts))
+  }
 
   const handleProductSelect = (product: Product) => {
-    setSelectedProduct(product)
+    // Find the most up-to-date version of the product
+    const category = product.category
+    const updatedProduct = products[category].find(p => p.id === product.id) || product
+    
+    setSelectedProduct(updatedProduct)
     setActiveSection("product-details")
   }
 
@@ -74,19 +96,22 @@ function StoreContent() {
 
   const handleUpdateProduct = (updatedProduct: Product) => {
     const category = updatedProduct.category
-    setProducts((prev) => ({
-      ...prev,
-      [category]: prev[category].map((p) => (p.id === updatedProduct.id ? updatedProduct : p)),
-    }))
+    
+    // Update the product in the state
+    const updatedProducts = {
+      ...products,
+      [category]: products[category].map((p) => (p.id === updatedProduct.id ? updatedProduct : p)),
+    }
+    
+    setProducts(updatedProducts)
+    
+    // If the selected product is being updated, update it too
+    if (selectedProduct && selectedProduct.id === updatedProduct.id) {
+      setSelectedProduct(updatedProduct)
+    }
 
     // Save to localStorage for persistence
-    localStorage.setItem(
-      "store_products",
-      JSON.stringify({
-        ...products,
-        [category]: products[category].map((p) => (p.id === updatedProduct.id ? updatedProduct : p)),
-      }),
-    )
+    localStorage.setItem("store_products", JSON.stringify(updatedProducts))
   }
 
   const handleDeleteProduct = (productId: string) => {
@@ -100,32 +125,37 @@ function StoreContent() {
     }
 
     if (productCategory) {
-      setProducts((prev) => ({
-        ...prev,
-        [productCategory]: prev[productCategory].filter((p) => p.id !== productId),
-      }))
-
-      // Save to localStorage for persistence
+      // Update the products state
       const updatedProducts = {
         ...products,
         [productCategory]: products[productCategory].filter((p) => p.id !== productId),
       }
+      
+      setProducts(updatedProducts)
+      
+      // If the selected product is being deleted, go back to the category view
+      if (selectedProduct && selectedProduct.id === productId) {
+        setSelectedProduct(null)
+        setActiveSection(productCategory)
+      }
+
+      // Save to localStorage for persistence
       localStorage.setItem("store_products", JSON.stringify(updatedProducts))
     }
   }
 
   const handleAddProduct = (newProduct: Product) => {
     const category = newProduct.category
-    setProducts((prev) => ({
-      ...prev,
-      [category]: [...prev[category], newProduct],
-    }))
-
-    // Save to localStorage for persistence
+    
+    // Update the products state
     const updatedProducts = {
       ...products,
       [category]: [...products[category], newProduct],
     }
+    
+    setProducts(updatedProducts)
+
+    // Save to localStorage for persistence
     localStorage.setItem("store_products", JSON.stringify(updatedProducts))
   }
 
@@ -223,4 +253,3 @@ export function Store() {
     </AdminProvider>
   )
 }
-
